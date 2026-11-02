@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Retro 2000s TV Injector (Background Processing)</title>
+  <title>Retro 2000s TV Injector</title>
   <style>
     :root {
       --bg-color: #0b0e14;
@@ -118,7 +118,7 @@
 <body>
 
   <h1>RETRO 2000s TV INJECTOR</h1>
-  <p>Headless background processing with 4:3 formatting and dynamic commercial preview dropdown.</p>
+  <p>Auto-discovers .mp4 files from <code>/commercials/</code> automatically with preview dropdown.</p>
 
   <div class="container">
     <div class="control-group">
@@ -127,9 +127,9 @@
     </div>
 
     <div class="control-group">
-      <label for="commDropdown">2. Preview Commercials Pool (20 Selected)</label>
+      <label for="commDropdown">2. Preview Commercials Pool</label>
       <select id="commDropdown">
-        <option value="">-- Select a commercial to preview --</option>
+        <option value="">-- Scanning /commercials/ folder for MP4s... --</option>
       </select>
       <div class="preview-box" id="previewBox">
         <video id="previewPlayer" controls></video>
@@ -166,7 +166,6 @@
     const previewBox = document.getElementById('previewBox');
     const previewPlayer = document.getElementById('previewPlayer');
 
-    // Offscreen canvas for hidden processing
     const canvas = document.createElement('canvas');
     canvas.width = 640;
     canvas.height = 480;
@@ -174,53 +173,78 @@
 
     let pool20Commercials = [];
 
-    // Update range display text dynamically
     slider.addEventListener('input', (e) => {
       freqDisplay.textContent = `Every ${e.target.value} Minutes`;
     });
 
-    // Preview Dropdown Event Listener
     commDropdown.addEventListener('change', (e) => {
       const selectedPath = e.target.value;
       if (selectedPath) {
-        previewPlayer.src = selectedPath;
         previewBox.style.display = 'flex';
-        previewPlayer.play();
+        statusText.textContent = `Loading preview...`;
+        previewPlayer.src = selectedPath;
+        previewPlayer.load();
+        previewPlayer.play().then(() => {
+          statusText.textContent = `Previewing commercial`;
+        }).catch(() => {
+          statusText.textContent = `Error playing preview file.`;
+        });
       } else {
         previewPlayer.pause();
         previewBox.style.display = 'none';
+        statusText.textContent = "Ready";
       }
     });
 
-    // Detect and select 20 valid commercial MP4s before starting
-    async function preselect20Commercials() {
-      statusText.textContent = "Scanning repository for 20 commercial pool...";
-      let validFiles = [];
+    // Auto-discover commercials by querying the GitHub Pages directory listing or parsing standard index views
+    async function discoverCommercials() {
+      statusText.textContent = "Auto-discovering commercials in /commercials/...";
+      let foundFiles = [];
 
       try {
-        const response = await fetch('./commercials/commercials.json');
+        // Fetch the directory listing of the commercials folder
+        const response = await fetch('./commercials/');
         if (response.ok) {
-          const manifest = await response.json();
-          validFiles = manifest.map(file => `./commercials/${file}`);
+          const htmlText = await response.text();
+          // Extract href attributes that end with .mp4
+          const matches = htmlText.match(/href="([^"]+\.mp4)"/gi);
+          if (matches) {
+            foundFiles = matches.map(m => {
+              const filename = m.match(/"([^"]+)"/)[1];
+              // Decode URI in case of spaces or special chars
+              return `./commercials/${decodeURIComponent(filename.split('/').pop())}`;
+            });
+          }
         }
       } catch (e) {}
 
-      if (!validFiles.length) {
-        for (let i = 1; i <= 100 && validFiles.length < 20; i++) {
-          const path = `./commercials/comm${i}.mp4`;
-          const exists = await checkFileExists(path);
-          if (exists) validFiles.push(path);
+      // Fallback: If GitHub Pages doesn't return directory HTML index, try a smart batch pattern scan or use fallback array
+      if (foundFiles.length === 0) {
+        // Quick background scan of common naming styles or numbers
+        const promises = [];
+        for (let i = 1; i <= 80; i++) {
+          promises.push(
+            fetch(`./commercials/commercial${i}.mp4`, { method: 'HEAD' }).then(res => res.ok ? `./commercials/commercial${i}.mp4` : null).catch(() => null),
+            fetch(`./commercials/comm${i}.mp4`, { method: 'HEAD' }).then(res => res.ok ? `./commercials/comm${i}.mp4` : null).catch(() => null),
+            fetch(`./commercials/ad${i}.mp4`, { method: 'HEAD' }).then(res => res.ok ? `./commercials/ad${i}.mp4` : null).catch(() => null)
+          );
         }
+        const results = await Promise.all(promises);
+        foundFiles = results.filter(f => f !== null);
       }
 
-      if (!validFiles.length) {
-        validFiles = Array.from({ length: 20 }, (_, i) => `./commercials/comm${i + 1}.mp4`);
+      // If still nothing found (e.g. testing locally without server), generate standard placeholders
+      if (foundFiles.length === 0) {
+        foundFiles = Array.from({ length: 20 }, (_, i) => `./commercials/ad${i + 1}.mp4`);
       }
 
-      const shuffled = [...validFiles].sort(() => 0.5 - Math.random());
+      // Remove duplicates
+      foundFiles = [...new Set(foundFiles)];
+
+      // Shuffle and lock up to 20 into pool
+      const shuffled = [...foundFiles].sort(() => 0.5 - Math.random());
       pool20Commercials = shuffled.slice(0, 20);
 
-      // Populate Dropdown Options
       commDropdown.innerHTML = '<option value="">-- Select a commercial to preview --</option>';
       pool20Commercials.forEach((path, index) => {
         const opt = document.createElement('option');
@@ -229,16 +253,11 @@
         commDropdown.appendChild(opt);
       });
 
-      statusText.textContent = `Ready (${pool20Commercials.length} commercials locked in pool).`;
+      statusText.textContent = `Discovered ${foundFiles.length} commercials! Locked 20 into pool. Ready!`;
     }
 
-    function checkFileExists(url) {
-      return fetch(url, { method: 'HEAD' }).then(res => res.ok).catch(() => false);
-    }
+    discoverCommercials();
 
-    preselect20Commercials();
-
-    // Web Audio setup for combining background audio streams
     let audioCtx, audioDest;
 
     function initAudio() {
@@ -256,8 +275,11 @@
         alert("Please select a source video file.");
         return;
       }
+      if (pool20Commercials.length === 0) {
+        alert("No commercials found in /commercials/ folder!");
+        return;
+      }
 
-      // Pause preview player if running
       previewPlayer.pause();
 
       initAudio();
