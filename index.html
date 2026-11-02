@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro 2000s Commercial Injector & 4:3 Converter</title>
+    <!-- Tailwind CSS for Responsive UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for Retro Aesthetic -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background-color: #0a0b10;
+            color: #d1d5db;
+        }
+        .font-pixel {
+            font-family: 'VT323', monospace;
+        }
+        
+        /* CRT Glass & Scanline Overlay */
+        .crt-container {
+            position: relative;
+            background: #000;
+            border-radius: 2rem;
+            box-shadow: inset 0 0 40px rgba(0,0,0,0.9), 0 0 25px rgba(234, 179, 8, 0.2);
+            overflow: hidden;
+        }
+        .crt-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 3px, 6px 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .crt-glare {
+            position: absolute;
+            top: -20%; left: -20%; width: 140%; height: 140%;
+            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 60%);
+            pointer-events: none;
+            z-index: 11;
+        }
+
+        /* Custom Retro Controls & Knobs */
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #facc15;
+            cursor: pointer;
+            box-shadow: 0 0 10px #facc15;
+        }
+        input[type="range"]::-moz-range-thumb {
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #facc15;
+            cursor: pointer;
+            box-shadow: 0 0 10px #facc15;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8 flex flex-col justify-between">
+
+    <!-- Header Section -->
+    <header class="max-w-6xl mx-auto w-full mb-6 flex flex-col sm:flex-row items-center justify-between border-b border-gray-800 pb-4 gap-4">
+        <div class="flex items-center gap-3">
+            <div class="bg-yellow-500 text-black font-pixel text-2xl px-3 py-1 rounded font-bold tracking-widest shadow-lg shadow-yellow-500/20">
+                2000s TV
+            </div>
+            <div>
+                <h1 class="text-xl md:text-2xl font-pixel text-yellow-400 tracking-wide uppercase">Commercial Injector & 4:3 Converter</h1>
+                <p class="text-xs text-gray-500">Auto-splices retro commercials & outputs 4:3 MP4s in-browser</p>
+            </div>
+        </div>
+        <div class="text-xs font-mono bg-gray-900 border border-gray-800 px-3 py-2 rounded-lg text-yellow-500/80">
+            <i class="fa-solid fa-hard-drive mr-1"></i> Path: <span class="text-gray-300">./commercials/</span>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-6xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-8">
+        
+        <!-- Left Column: Settings & Batch Queue (7 Cols) -->
+        <section class="lg:col-span-7 flex flex-col gap-6">
+            
+            <!-- Step 1: File & Folder Upload -->
+            <div class="bg-gray-900/80 border border-gray-800 rounded-2xl p-5 shadow-xl">
+                <h2 class="font-pixel text-sm text-yellow-400 flex items-center gap-2 mb-3">
+                    <i class="fa-solid fa-folder-open text-base"></i> 1. SELECT SOURCE VIDEOS (SINGLE OR FOLDER)
+                </h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label class="flex flex-col items-center justify-center border-2 border-dashed border-gray-700 hover:border-yellow-400/60 bg-gray-950 p-4 rounded-xl cursor-pointer transition-colors group">
+                        <i class="fa-solid fa-file-video text-2xl text-gray-500 group-hover:text-yellow-400 mb-2"></i>
+                        <span class="text-xs font-bold text-gray-300">Choose Files</span>
+                        <span class="text-[10px] text-gray-500">Select single/multiple MP4s</span>
+                        <input id="filesInput" type="file" multiple accept="video/mp4,video/webm,video/quicktime" class="hidden">
+                    </label>
+
+                    <label class="flex flex-col items-center justify-center border-2 border-dashed border-gray-700 hover:border-yellow-400/60 bg-gray-950 p-4 rounded-xl cursor-pointer transition-colors group">
+                        <i class="fa-solid fa-folder-plus text-2xl text-gray-500 group-hover:text-yellow-400 mb-2"></i>
+                        <span class="text-xs font-bold text-gray-300">Choose Entire Folder</span>
+                        <span class="text-[10px] text-gray-500">Process whole video folder</span>
+                        <input id="folderInput" type="file" webkitdirectory directory multiple class="hidden">
+                    </label>
+                </div>
+            </div>
+
+            <!-- Step 2: Commercial Frequency Settings -->
+            <div class="bg-gray-900/80 border border-gray-800 rounded-2xl p-5 shadow-xl">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="font-pixel text-sm text-yellow-400 flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-base"></i> 2. COMMERCIAL FREQUENCY
+                    </h2>
+                    <span id="freqVal" class="text-sm font-bold text-yellow-400 font-pixel tracking-wider bg-yellow-400/10 px-3 py-1 rounded border border-yellow-400/30">
+                        Every 15 Minutes
+                    </span>
+                </div>
+                <input id="freqSlider" type="range" min="5" max="50" value="15" step="5" class="w-full accent-yellow-400 bg-gray-800 h-2 rounded-lg cursor-pointer">
+                <div class="flex justify-between text-[10px] text-gray-500 mt-2 font-mono">
+                    <span>5 Min</span>
+                    <span>25 Min</span>
+                    <span>50 Min</span>
+                </div>
+                <p class="text-[11px] text-gray-400 mt-3 bg-gray-950 p-2.5 rounded-lg border border-gray-800 flex items-center gap-2">
+                    <i class="fa-solid fa-circle-info text-yellow-400"></i>
+                    Injects 3 random MP4 commercials per break from root repository <code class="text-yellow-300 font-bold">./commercials/</code>.
+                </p>
+            </div>
+
+            <!-- Queue View -->
+            <div class="bg-gray-900/80 border border-gray-800 rounded-2xl p-5 shadow-xl">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="font-pixel text-sm text-yellow-400 flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-base"></i> BATCH QUEUE (<span id="queueCount">0</span>)
+                    </h2>
+                    <button id="btnClearQueue" class="text-[10px] text-red-400 hover:text-red-300 font-mono underline">Clear All</button>
+                </div>
+                
+                <div id="queueContainer" class="max-h-48 overflow-y-auto space-y-2 pr-1 font-mono text-xs">
+                    <div class="text-center py-6 text-gray-600 border border-dashed border-gray-800 rounded-xl">
+                        No videos loaded. Add files or folders above.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Button -->
+            <button id="btnProcess" disabled class="w-full py-4 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 disabled:hover:bg-yellow-500 text-black font-pixel text-xl rounded-xl font-bold tracking-widest transition-all shadow-lg shadow-yellow-500/20 flex items-center justify-center gap-3">
+                <i class="fa-solid fa-play"></i> INJECT & EXPORT ALL
+            </button>
+        </section>
+
+        <!-- Right Column: 4:3 CRT Display Preview (5 Cols) -->
+        <section class="lg:col-span-5 flex flex-col items-center">
+            <div class="w-full bg-gray-900/80 border border-gray-800 rounded-2xl p-5 shadow-xl flex flex-col items-center">
+                <h2 class="font-pixel text-sm text-yellow-400 w-full mb-3 flex items-center justify-between">
+                    <span><i class="fa-solid fa-tv mr-2"></i> 4:3 CRT MONITOR PREVIEW</span>
+                    <span id="vcrStatus" class="text-xs text-red-500 font-pixel">● STANDBY</span>
+                </h2>
+
+                <!-- Retro TV Outer Shell -->
+                <div class="w-full max-w-[400px] bg-neutral-900 p-4 rounded-3xl border-4 border-neutral-800 shadow-2xl relative">
+                    <!-- CRT Screen Container -->
+                    <div class="crt-container aspect-[4/3] w-full flex items-center justify-center bg-black relative">
+                        <!-- Canvas for 4:3 Video Rendering -->
+                        <canvas id="renderCanvas" class="w-full h-full object-contain relative z-0"></canvas>
+                        
+                        <!-- CRT Scanline & Glare Overlays -->
+                        <div class="crt-overlay"></div>
+                        <div class="crt-glare"></div>
+
+                        <!-- On-Screen Display Overlay -->
+                        <div id="osdText" class="absolute top-4 left-4 text-green-400 font-pixel text-xl tracking-widest z-20 opacity-0 transition-opacity">
+                            PLAY
+                        </div>
+                    </div>
+
+                    <!-- TV Controls & Retro Branding -->
+                    <div class="flex items-center justify-between mt-4 px-2">
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-2.5 h-2.5 rounded-full bg-red-600 shadow-md"></div>
+                            <span class="text-[10px] font-pixel text-gray-500 tracking-wider">POWER</span>
+                        </div>
+                        <div class="text-[11px] font-pixel text-gray-600 font-bold tracking-widest">
+                            RETRO-VISION 2000
+                        </div>
+                        <div class="flex gap-1">
+                            <div class="w-3 h-3 rounded-full bg-neutral-800 border border-neutral-700"></div>
+                            <div class="w-3 h-3 rounded-full bg-neutral-800 border border-neutral-700"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Processing Progress Indicator -->
+                <div id="progressBox" class="w-full mt-4 bg-gray-950 p-3 rounded-xl border border-gray-800 hidden">
+                    <div class="flex justify-between text-xs font-mono text-gray-400 mb-1">
+                        <span id="progressStatus">Injecting Commercials...</span>
+                        <span id="progressPercent">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
+                        <div id="progressBar" class="bg-yellow-400 h-full w-0 transition-all duration-200"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="max-w-6xl mx-auto w-full text-center text-xs text-gray-600 border-t border-gray-900 pt-4">
+        HTML5 Client-Side Commercial Injector & Full 4:3 Converter • Compatible with GitHub Pages
+    </footer>
+
+    <!-- Video Processing Logic -->
+    <script>
+        // Array of relative repository commercial paths
+        const REPO_COMMERCIAL_PATHS = [
+            './commercials/comm1.mp4',
+            './commercials/comm2.mp4',
+            './commercials/comm3.mp4',
+            './commercials/comm4.mp4',
+            './commercials/comm5.mp4'
+        ];
+
+        const state = {
+            queue: [],             // Video Queue [{ file, name, status }]
+            loadedCommercials: [], // HTMLVideoElements for commercials
+            canvas: null,
+            ctx: null,
+            isProcessing: false,
+            audioCtx: null
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initCanvas();
+            initSliderListener();
+            preloadRepoCommercials();
+            bindEvents();
+        });
+
+        // Initialize 4:3 CRT Canvas Screen
+        function initCanvas() {
+            state.canvas = document.getElementById('renderCanvas');
+            state.ctx = state.canvas.getContext('2d');
+            // Native 4:3 resolution for recording/rendering
+            state.canvas.width = 640;
+            state.canvas.height = 480;
+
+            // Fill black background
+            state.ctx.fillStyle = '#050505';
+            state.ctx.fillRect(0, 0, 640, 480);
+        }
+
+        // Initialize Commercial Frequency Range Slider Event Listeners
+        function initSliderListener() {
+            const slider = document.getElementById('freqSlider');
+            const freqValDisplay = document.getElementById('freqVal');
+
+            if (!slider || !freqValDisplay) return;
+
+            // Function to update display text dynamically
+            const updateDisplay = () => {
+                freqValDisplay.textContent = `Every ${slider.value} Minutes`;
+            };
+
+            // Listen to both 'input' (real-time dragging) and 'change' (keyboard/mouse release)
+            slider.addEventListener('input', updateDisplay);
+            slider.addEventListener('change', updateDisplay);
+
+            // Initial sync
+            updateDisplay();
+        }
+
+        // Preload repository commercial MP4s into HTML Video Elements
+        function preloadRepoCommercials() {
+            REPO_COMMERCIAL_PATHS.forEach((path) => {
+                const vid = document.createElement('video');
+                // Ensure proper relative path resolution for GitHub Pages
+                const fullUrl = new URL(path, window.location.href).href;
+                vid.src = fullUrl;
+                vid.crossOrigin = 'anonymous';
+                vid.preload = 'auto';
+                vid.muted = false;
+                vid.playsInline = true;
+
+                // Handle missing local repository files gracefully with fallback canvas notice
+                vid.onerror = () => {
+                    vid.isFallback = true;
+                };
+
+                state.loadedCommercials.push(vid);
+            });
+        }
+
+        function bindEvents() {
+            document.getElementById('filesInput').addEventListener('change', handleFileSelect);
+            document.getElementById('folderInput').addEventListener('change', handleFileSelect);
+            document.getElementById('btnClearQueue').addEventListener('click', clearQueue);
+            document.getElementById('btnProcess').addEventListener('click', startBatchProcessing);
+        }
+
+        function handleFileSelect(e) {
+            const files = Array.from(e.target.files);
+            const videoFiles = files.filter(f => f.type.startsWith('video/') || f.name.match(/\.(mp4|webm|mov|mkv)$/i));
+
+            videoFiles.forEach(file => {
+                state.queue.push({
+                    file: file,
+                    name: file.name,
+                    status: 'pending'
+                });
+            });
+
+            updateQueueUI();
+        }
+
+        function clearQueue() {
+            if (state.isProcessing) return;
+            state.queue = [];
+            updateQueueUI();
+        }
+
+        function updateQueueUI() {
+            const container = document.getElementById('queueContainer');
+            const countEl = document.getElementById('queueCount');
+            const btnProcess = document.getElementById('btnProcess');
+
+            countEl.textContent = state.queue.length;
+            btnProcess.disabled = state.queue.length === 0 || state.isProcessing;
+
+            if (state.queue.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-6 text-gray-600 border border-dashed border-gray-800 rounded-xl">
+                        No videos loaded. Add files or folders above.
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = state.queue.map((item, idx) => `
+                <div class="flex items-center justify-between bg-gray-950 p-2.5 rounded-lg border border-gray-800">
+                    <div class="flex items-center gap-2 truncate">
+                        <i class="fa-solid fa-film ${item.status === 'done' ? 'text-green-400' : item.status === 'processing' ? 'text-yellow-400 animate-pulse' : 'text-gray-500'}"></i>
+                        <span class="truncate text-gray-300 font-mono">${item.name}</span>
+                    </div>
+                    <span class="text-[10px] px-2 py-0.5 rounded font-pixel ${
+                        item.status === 'done' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+                        item.status === 'processing' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
+                        'bg-gray-800 text-gray-400'
+                    }">
+                        ${item.status.toUpperCase()}
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        // Process Queue Batch Sequentially
+        async function startBatchProcessing() {
+            if (state.isProcessing || state.queue.length === 0) return;
+
+            state.isProcessing = true;
+            document.getElementById('btnProcess').disabled = true;
+            document.getElementById('progressBox').classList.remove('hidden');
+
+            for (let i = 0; i < state.queue.length; i++) {
+                if (state.queue[i].status === 'done') continue;
+                state.queue[i].status = 'processing';
+                updateQueueUI();
+
+                await processSingleVideo(state.queue[i]);
+
+                state.queue[i].status = 'done';
+                updateQueueUI();
+            }
+
+            state.isProcessing = false;
+            document.getElementById('progressBox').classList.add('hidden');
+            showOSD('COMPLETED');
+            document.getElementById('vcrStatus').textContent = '● STANDBY';
+            document.getElementById('vcrStatus').className = 'text-xs text-red-500 font-pixel';
+        }
+
+        // Process a Single Video File: Inject 3 Random Commercials per Interval & Letterbox 4:3
+        function processSingleVideo(item) {
+            return new Promise((resolve) => {
+                const videoEl = document.createElement('video');
+                videoEl.src = URL.createObjectURL(item.file);
+                videoEl.muted = false;
+                videoEl.playsInline = true;
+
+                const slider = document.getElementById('freqSlider');
+                const intervalSecs = (slider ? parseInt(slider.value, 10) : 15) * 60;
+
+                videoEl.onloadedmetadata = async () => {
+                    const duration = videoEl.duration;
+                    
+                    // Determine injection time points
+                    const injectionTimes = [];
+                    let nextTime = intervalSecs;
+                    while (nextTime < duration - 10) {
+                        injectionTimes.push(nextTime);
+                        nextTime += intervalSecs;
+                    }
+
+                    document.getElementById('vcrStatus').textContent = '● RECORDING';
+                    document.getElementById('vcrStatus').className = 'text-xs text-yellow-400 font-pixel animate-pulse';
+                    showOSD('REC');
+
+                    // Setup MediaRecorder from Canvas stream
+                    const stream = state.canvas.captureStream(30);
+                    let mediaRecorder;
+                    const chunks = [];
+
+                    try {
+                        mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
+                    } catch (e) {
+                        mediaRecorder = new MediaRecorder(stream);
+                    }
+
+                    mediaRecorder.ondataavailable = (e) => {
+                        if (e.data.size > 0) chunks.push(e.data);
+                    };
+
+                    mediaRecorder.onstop = () => {
+                        const blob = new Blob(chunks, { type: 'video/mp4' });
+                        const url = URL.createObjectURL(blob);
+                        
+                        // Auto Trigger Download
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `4x3_COMMERCIAL_${item.name.replace(/\.[^/.]+$/, "")}.mp4`;
+                        a.click();
+
+                        URL.revokeObjectURL(videoEl.src);
+                        resolve();
+                    };
+
+                    mediaRecorder.start();
+
+                    let currentTime = 0;
+                    let injectionIdx = 0;
+
+                    // Playback & Render Loop
+                    while (currentTime < duration) {
+                        // Check if we hit a commercial break
+                        if (injectionIdx < injectionTimes.length && currentTime >= injectionTimes[injectionIdx]) {
+                            videoEl.pause();
+                            
+                            // Inject 3 Random Commercials sequentially
+                            showOSD('COMMERCIAL BREAK');
+                            for (let c = 0; c < 3; c++) {
+                                await playRandomCommercial();
+                            }
+                            showOSD('REC');
+                            injectionIdx++;
+                        }
+
+                        // Play portion of main video
+                        const stepTarget = Math.min(
+                            injectionIdx < injectionTimes.length ? injectionTimes[injectionIdx] : duration,
+                            currentTime + 0.5
+                        );
+
+                        videoEl.currentTime = currentTime;
+                        await videoEl.play().catch(() => {});
+                        await new Promise(r => setTimeout(r, 100));
+                        videoEl.pause();
+
+                        // Render 4:3 letterboxed video frame to canvas
+                        draw43Frame(videoEl);
+
+                        currentTime = stepTarget;
+                        const pct = Math.round((currentTime / duration) * 100);
+                        document.getElementById('progressBar').style.width = `${pct}%`;
+                        document.getElementById('progressPercent').textContent = `${pct}%`;
+                    }
+
+                    mediaRecorder.stop();
+                };
+            });
+        }
+
+        // Play 1 Random Commercial from loaded repository video elements
+        function playRandomCommercial() {
+            return new Promise((resolve) => {
+                if (state.loadedCommercials.length === 0) {
+                    renderFallbackCommercial(resolve);
+                    return;
+                }
+
+                const randIdx = Math.floor(Math.random() * state.loadedCommercials.length);
+                const commVid = state.loadedCommercials[randIdx];
+
+                if (commVid.isFallback) {
+                    renderFallbackCommercial(resolve);
+                    return;
+                }
+
+                commVid.currentTime = 0;
+                commVid.play().then(() => {
+                    const renderLoop = setInterval(() => {
+                        if (commVid.ended || commVid.paused) {
+                            clearInterval(renderLoop);
+                            resolve();
+                        } else {
+                            draw43Frame(commVid);
+                        }
+                    }, 33);
+                }).catch(() => {
+                    renderFallbackCommercial(resolve);
+                });
+            });
+        }
+
+        // Fallback procedural commercial card if repository MP4 file is not present locally
+        function renderFallbackCommercial(onComplete) {
+            let frames = 0;
+            const maxFrames = 90; // 3 Seconds
+            const interval = setInterval(() => {
+                state.ctx.fillStyle = '#0f172a';
+                state.ctx.fillRect(0, 0, 640, 480);
+
+                state.ctx.fillStyle = '#facc15';
+                state.ctx.font = '36px VT323';
+                state.ctx.textAlign = 'center';
+                state.ctx.fillText('2000s COMMERCIAL BREAK', 320, 220);
+
+                state.ctx.fillStyle = '#94a3b8';
+                state.ctx.font = '20px Share Tech Mono';
+                state.ctx.fillText('Fetching ./commercials/ MP4...', 320, 270);
+
+                frames++;
+                if (frames >= maxFrames) {
+                    clearInterval(interval);
+                    onComplete();
+                }
+            }, 33);
+        }
+
+        // Draws video onto canvas with strict 4:3 Aspect Ratio Letterboxing/Pillarboxing
+        function draw43Frame(video) {
+            const canvasWidth = 640;
+            const canvasHeight = 480;
+            const targetAspect = 4 / 3;
+
+            state.ctx.fillStyle = '#000000';
+            state.ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+            const vWidth = video.videoWidth || 640;
+            const vHeight = video.videoHeight || 480;
+            const videoAspect = vWidth / vHeight;
+
+            let drawW, drawH, drawX, drawY;
+
+            if (videoAspect > targetAspect) {
+                // Fit width (Letterbox top/bottom)
+                drawW = canvasWidth;
+                drawH = canvasWidth / videoAspect;
+                drawX = 0;
+                drawY = (canvasHeight - drawH) / 2;
+            } else {
+                // Fit height (Pillarbox sides)
+                drawH = canvasHeight;
+                drawW = canvasHeight * videoAspect;
+                drawX = (canvasWidth - drawW) / 2;
+                drawY = 0;
+            }
+
+            state.ctx.drawImage(video, drawX, drawY, drawW, drawH);
+        }
+
+        // CRT On-Screen Display Text Notification
+        function showOSD(text) {
+            const osd = document.getElementById('osdText');
+            osd.textContent = text;
+            osd.style.opacity = '1';
+            setTimeout(() => {
+                osd.style.opacity = '0';
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
