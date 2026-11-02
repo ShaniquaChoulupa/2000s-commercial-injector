@@ -45,9 +45,14 @@
     
     label { display: block; font-weight: bold; margin-bottom: 8px; color: var(--accent); }
     
-    input[type="file"], input[type="range"] {
+    input[type="file"], input[type="range"], select {
       width: 100%;
       box-sizing: border-box;
+      padding: 8px;
+      background: #161b22;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
     }
 
     .slider-val {
@@ -69,6 +74,20 @@
       transition: opacity 0.2s;
     }
     button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .preview-box {
+      margin-top: 10px;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .preview-box video {
+      width: 100%;
+      max-height: 240px;
+      border-radius: 4px;
+      background: #000;
+    }
 
     .progress-bar {
       width: 100%;
@@ -99,7 +118,7 @@
 <body>
 
   <h1>RETRO 2000s TV INJECTOR</h1>
-  <p>Headless background processing with 4:3 formatting and random 20-commercial pool selection.</p>
+  <p>Headless background processing with 4:3 formatting and dynamic commercial preview dropdown.</p>
 
   <div class="container">
     <div class="control-group">
@@ -108,8 +127,18 @@
     </div>
 
     <div class="control-group">
+      <label for="commDropdown">2. Preview Commercials Pool (20 Selected)</label>
+      <select id="commDropdown">
+        <option value="">-- Select a commercial to preview --</option>
+      </select>
+      <div class="preview-box" id="previewBox">
+        <video id="previewPlayer" controls></video>
+      </div>
+    </div>
+
+    <div class="control-group">
       <label>
-        2. Commercial Break Frequency 
+        3. Commercial Break Frequency 
         <span class="slider-val" id="freqDisplay">Every 15 Minutes</span>
       </label>
       <input type="range" id="freqSlider" min="5" max="50" value="15" step="5" />
@@ -133,6 +162,10 @@
     const progressBar = document.getElementById('progressBar');
     const progressFill = document.getElementById('progressFill');
 
+    const commDropdown = document.getElementById('commDropdown');
+    const previewBox = document.getElementById('previewBox');
+    const previewPlayer = document.getElementById('previewPlayer');
+
     // Offscreen canvas for hidden processing
     const canvas = document.createElement('canvas');
     canvas.width = 640;
@@ -141,9 +174,22 @@
 
     let pool20Commercials = [];
 
-    // Frequency slider real-time updater
+    // Update range display text dynamically
     slider.addEventListener('input', (e) => {
       freqDisplay.textContent = `Every ${e.target.value} Minutes`;
+    });
+
+    // Preview Dropdown Event Listener
+    commDropdown.addEventListener('change', (e) => {
+      const selectedPath = e.target.value;
+      if (selectedPath) {
+        previewPlayer.src = selectedPath;
+        previewBox.style.display = 'flex';
+        previewPlayer.play();
+      } else {
+        previewPlayer.pause();
+        previewBox.style.display = 'none';
+      }
     });
 
     // Detect and select 20 valid commercial MP4s before starting
@@ -151,7 +197,6 @@
       statusText.textContent = "Scanning repository for 20 commercial pool...";
       let validFiles = [];
 
-      // Try loading manifest first
       try {
         const response = await fetch('./commercials/commercials.json');
         if (response.ok) {
@@ -160,7 +205,6 @@
         }
       } catch (e) {}
 
-      // Fallback: Check sequentially for existing commercial files up to 100
       if (!validFiles.length) {
         for (let i = 1; i <= 100 && validFiles.length < 20; i++) {
           const path = `./commercials/comm${i}.mp4`;
@@ -170,13 +214,21 @@
       }
 
       if (!validFiles.length) {
-        // Fallback pattern if offline or directly opening local file
         validFiles = Array.from({ length: 20 }, (_, i) => `./commercials/comm${i + 1}.mp4`);
       }
 
-      // Shuffle and lock exactly 20 commercials into the active pool
       const shuffled = [...validFiles].sort(() => 0.5 - Math.random());
       pool20Commercials = shuffled.slice(0, 20);
+
+      // Populate Dropdown Options
+      commDropdown.innerHTML = '<option value="">-- Select a commercial to preview --</option>';
+      pool20Commercials.forEach((path, index) => {
+        const opt = document.createElement('option');
+        opt.value = path;
+        opt.textContent = `Commercial #${index + 1} (${path.split('/').pop()})`;
+        commDropdown.appendChild(opt);
+      });
+
       statusText.textContent = `Ready (${pool20Commercials.length} commercials locked in pool).`;
     }
 
@@ -205,6 +257,9 @@
         return;
       }
 
+      // Pause preview player if running
+      previewPlayer.pause();
+
       initAudio();
       processBtn.disabled = true;
       progressBar.style.display = 'block';
@@ -218,7 +273,6 @@
 
       await sourceVideo.load();
 
-      // Audio route to background stream only (no speaker feedback)
       const mainAudioSource = audioCtx.createMediaElementSource(sourceVideo);
       mainAudioSource.connect(audioDest);
 
@@ -261,7 +315,6 @@
           return;
         }
 
-        // Progress update
         if (sourceVideo.duration) {
           const percent = (sourceVideo.currentTime / sourceVideo.duration) * 100;
           progressFill.style.width = `${percent}%`;
@@ -308,11 +361,9 @@
       ctx.drawImage(element, offsetX, offsetY, drawWidth, drawHeight);
     }
 
-    // Picks 3 random commercials out of the pre-selected 20 pool for each break
     async function processCommercialBreak(mainVideo) {
       mainVideo.pause();
       
-      // Select 3 unique random commercials from pool of 20
       const breakSelection = [...pool20Commercials]
         .sort(() => 0.5 - Math.random())
         .slice(0, 3);
@@ -352,7 +403,6 @@
         };
 
         commVideo.onerror = () => {
-          // Skip missing files without crashing processing loop
           resolve();
         };
       });
